@@ -1,8 +1,11 @@
 modules = ["nodejs-24", "python-3.11"]
 
+run = "cd artifacts/groundtube && python3 app.py"
+
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
+run = ["sh", "-c", "cd artifacts/groundtube && python3 app.py"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
