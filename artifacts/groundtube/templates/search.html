@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Search: ' + query if query else 'Search' }}{% endblock %}
+
+{% block content %}
+<div class="search-hero">
+  {% if query %}
+  <h2>Results for <span>"{{ query }}"</span></h2>
+  {% if videos %}<p style="font-size:0.875rem;color:var(--text-muted);margin-top:4px">{{ videos.total }} result{{ 's' if videos.total != 1 }}</p>{% endif %}
+  {% else %}
+  <h2>Search GroundTube</h2>
+  {% endif %}
+</div>
+
+{% if not query %}
+<div class="empty-state">
+  <div class="empty-icon">🔍</div>
+  <h3>Search for videos</h3>
+  <p>Use the search bar above to find videos, audio, and channels.</p>
+</div>
+
+{% elif videos and videos.items %}
+<div class="video-grid">
+  {% for video in videos.items %}
+  <a href="{{ url_for('watch', video_id=video.uuid) }}" class="video-card">
+    <div class="thumb-wrap">
+      <img src="{{ video.thumbnail_url() }}" alt="{{ video.title }}"
+           onerror="this.src='{{ url_for('static', filename='img/video_thumb.png') }}'">
+      <div class="thumb-overlay"><span class="thumb-play">▶</span></div>
+      {% if video.media_type == 'audio' %}<div class="audio-badge">♪ Audio</div>{% endif %}
+    </div>
+    <div class="card-info">
+      <a href="{{ url_for('channel', username=video.author.username) }}" onclick="event.stopPropagation()">
+        {% if video.author.avatar %}
+          <img src="{{ video.author.avatar_url() }}" alt="" class="card-avatar">
+        {% else %}
+          <div class="card-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);color:white;font-weight:700;font-size:0.9rem">
+            {{ video.author.username[0].upper() }}
+          </div>
+        {% endif %}
+      </a>
+      <div class="card-meta">
+        <p class="card-title">{{ video.title }}</p>
+        <a href="{{ url_for('channel', username=video.author.username) }}" class="card-channel" onclick="event.stopPropagation()">
+          {{ video.author.username }}
+        </a>
+        <div class="card-stats">
+          <span>{{ video.format_views() }} views</span>
+          <span class="dot"></span>
+          <span>{{ video.time_ago() }}</span>
+          <span class="dot"></span>
+          <span>{{ video.category }}</span>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if videos.pages > 1 %}
+<div class="pagination">
+  {% if videos.has_prev %}
+  <a href="{{ url_for('search', q=query, page=videos.prev_num) }}" class="page-btn">← Prev</a>
+  {% endif %}
+  {% for p in videos.iter_pages() %}
+    {% if p %}
+    <a href="{{ url_for('search', q=query, page=p) }}" class="page-btn {% if p == videos.page %}active{% endif %}">{{ p }}</a>
+    {% else %}<span class="page-btn">…</span>
+    {% endif %}
+  {% endfor %}
+  {% if videos.has_next %}
+  <a href="{{ url_for('search', q=query, page=videos.next_num) }}" class="page-btn">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🔍</div>
+  <h3>No results for "{{ query }}"</h3>
+  <p>Try different keywords or browse categories on the left.</p>
+</div>
+{% endif %}
+{% endblock %}

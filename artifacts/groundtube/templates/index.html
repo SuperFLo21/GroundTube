@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ title if title else 'Home' }}{% endblock %}
+
+{% block content %}
+<div class="section-header">
+  <h1 class="section-title">
+    {% if active_section == 'trending' %}🔥 Trending
+    {% elif active_section == 'subscriptions' %}🔔 Subscriptions
+    {% elif active_cat %}📁 {{ active_cat }}
+    {% else %}🏠 Home
+    {% endif %}
+  </h1>
+</div>
+
+{% if not active_section and not active_cat %}
+<div class="category-chips">
+  <a href="{{ url_for('index') }}" class="chip active">All</a>
+  {% for cat in categories %}
+  <a href="{{ url_for('category', cat=cat) }}" class="chip">{{ cat }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if videos and videos.items %}
+<div class="video-grid">
+  {% for video in videos.items %}
+  <a href="{{ url_for('watch', video_id=video.uuid) }}" class="video-card">
+    <div class="thumb-wrap">
+      <img src="{{ video.thumbnail_url() }}" alt="{{ video.title }}"
+           onerror="this.src='{{ url_for('static', filename='img/video_thumb.png') }}'">
+      <div class="thumb-overlay">
+        <span class="thumb-play">▶</span>
+      </div>
+      {% if video.media_type == 'audio' %}
+      <div class="audio-badge">♪ Audio</div>
+      {% endif %}
+    </div>
+    <div class="card-info">
+      <a href="{{ url_for('channel', username=video.author.username) }}" onclick="event.stopPropagation()">
+        {% if video.author.avatar %}
+          <img src="{{ video.author.avatar_url() }}" alt="" class="card-avatar"
+               onerror="this.style.background='var(--surface-3)'">
+        {% else %}
+          <div class="card-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);color:white;font-weight:700;font-size:0.9rem">
+            {{ video.author.username[0].upper() }}
+          </div>
+        {% endif %}
+      </a>
+      <div class="card-meta">
+        <p class="card-title">{{ video.title }}</p>
+        <a href="{{ url_for('channel', username=video.author.username) }}" class="card-channel" onclick="event.stopPropagation()">
+          {{ video.author.username }}
+        </a>
+        <div class="card-stats">
+          <span>{{ video.format_views() }} views</span>
+          <span class="dot"></span>
+          <span>{{ video.time_ago() }}</span>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if videos.pages > 1 %}
+<div class="pagination">
+  {% if videos.has_prev %}
+  <a href="{{ request.url | replace('page=' + videos.page|string, 'page=' + videos.prev_num|string) if 'page=' in request.url else request.url + '&page=' + videos.prev_num|string }}" class="page-btn">← Prev</a>
+  {% else %}
+  <span class="page-btn disabled">← Prev</span>
+  {% endif %}
+
+  {% for p in videos.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+    {% if p %}
+    <a href="{{ request.url | replace('page=' + videos.page|string, 'page=' + p|string) if 'page=' in request.url else request.url + '&page=' + p|string }}" class="page-btn {% if p == videos.page %}active{% endif %}">{{ p }}</a>
+    {% else %}
+    <span class="page-btn">…</span>
+    {% endif %}
+  {% endfor %}
+
+  {% if videos.has_next %}
+  <a href="{{ request.url | replace('page=' + videos.page|string, 'page=' + videos.next_num|string) if 'page=' in request.url else request.url + '&page=' + videos.next_num|string }}" class="page-btn">Next →</a>
+  {% else %}
+  <span class="page-btn disabled">Next →</span>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📭</div>
+  {% if active_section == 'subscriptions' %}
+    <h3>No videos from your subscriptions yet</h3>
+    <p>Subscribe to channels to see their latest uploads here.</p>
+  {% elif active_cat %}
+    <h3>No videos in {{ active_cat }} yet</h3>
+    <p>Be the first to upload in this category!</p>
+  {% else %}
+    <h3>No videos yet</h3>
+    <p>Be the first to upload something!</p>
+  {% endif %}
+  {% if current_user.is_authenticated %}
+  <a href="{{ url_for('upload') }}" class="btn-primary" style="margin-top:20px">Upload a Video</a>
+  {% else %}
+  <a href="{{ url_for('register') }}" class="btn-primary" style="margin-top:20px">Join GroundTube</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

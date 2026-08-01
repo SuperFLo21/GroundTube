@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>{% block title %}{{ title if title else 'GroundTube' }}{% endblock %} — GroundTube</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body {% if current_user.is_authenticated %}data-logged-in="1"{% endif %}>
+
+<!-- Flash Messages -->
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">
+        <span>{{ message }}</span>
+        <button class="alert-close" onclick="this.parentElement.remove()">✕</button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<!-- Header -->
+<header class="header">
+  <a href="{{ url_for('index') }}" class="header-logo">
+    <span class="logo-gt">▶</span>
+    <span><span class="logo-red" style="color:#ff0000">Ground</span><span class="logo-tube">Tube</span></span>
+  </a>
+
+  <form action="{{ url_for('search') }}" method="get" class="header-search">
+    <div class="search-input-wrap">
+      <input type="search" name="q" placeholder="Search videos…"
+             value="{{ request.args.get('q', '') }}" autocomplete="off">
+    </div>
+    <button type="submit" class="btn-search" aria-label="Search">🔍</button>
+  </form>
+
+  <div class="header-actions">
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('upload') }}" class="btn-upload">
+        <span>⬆</span> <span>Upload</span>
+      </a>
+      <div class="user-menu">
+        <div id="userMenuToggle" style="cursor:pointer">
+          {% if current_user.avatar %}
+            <img src="{{ current_user.avatar_url() }}" alt="" class="user-avatar">
+          {% else %}
+            <div class="user-avatar-placeholder">{{ current_user.username[0] }}</div>
+          {% endif %}
+        </div>
+        <div class="dropdown" id="userDropdown">
+          <a href="{{ url_for('channel', username=current_user.username) }}" class="dropdown-item">
+            👤 Your Channel
+          </a>
+          <a href="{{ url_for('subscriptions') }}" class="dropdown-item">
+            🔔 Subscriptions
+          </a>
+          <a href="{{ url_for('settings') }}" class="dropdown-item">
+            ⚙️ Settings
+          </a>
+          {% if current_user.is_admin %}
+            <div class="dropdown-divider"></div>
+            <a href="{{ url_for('admin_dashboard') }}" class="dropdown-item text-accent">
+              🛡️ Admin Panel
+            </a>
+          {% endif %}
+          <div class="dropdown-divider"></div>
+          <a href="{{ url_for('logout') }}" class="dropdown-item">
+            🚪 Sign Out
+          </a>
+        </div>
+      </div>
+    {% else %}
+      <a href="{{ url_for('login') }}" class="btn-signin">👤 Sign In</a>
+    {% endif %}
+  </div>
+</header>
+
+<div class="site-wrapper">
+  <div class="main-content">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-section">
+        <a href="{{ url_for('index') }}" class="sidebar-link {% if request.endpoint == 'index' %}active{% endif %}">
+          <span class="icon">🏠</span> Home
+        </a>
+        <a href="{{ url_for('trending') }}" class="sidebar-link {% if request.endpoint == 'trending' %}active{% endif %}">
+          <span class="icon">🔥</span> Trending
+        </a>
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('subscriptions') }}" class="sidebar-link {% if request.endpoint == 'subscriptions' %}active{% endif %}">
+          <span class="icon">🔔</span> Subscriptions
+        </a>
+        {% endif %}
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">Explore</p>
+        {% set cats = ['Gaming','Music','Sports','Education','Technology','Entertainment','News','Travel','Comedy','Art'] %}
+        {% for cat in cats %}
+        <a href="{{ url_for('category', cat=cat) }}" class="sidebar-link {% if request.endpoint == 'category' and request.view_args.cat == cat %}active{% endif %}">
+          <span class="icon">{% if cat == 'Gaming' %}🎮{% elif cat == 'Music' %}🎵{% elif cat == 'Sports' %}⚽{% elif cat == 'Education' %}📚{% elif cat == 'Technology' %}💻{% elif cat == 'Entertainment' %}🎬{% elif cat == 'News' %}📰{% elif cat == 'Travel' %}✈️{% elif cat == 'Comedy' %}😂{% elif cat == 'Art' %}🎨{% else %}📁{% endif %}</span>
+          {{ cat }}
+        </a>
+        {% endfor %}
+      </div>
+      {% if current_user.is_authenticated %}
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <p class="sidebar-section-title">Account</p>
+        <a href="{{ url_for('channel', username=current_user.username) }}" class="sidebar-link">
+          <span class="icon">👤</span> Your Channel
+        </a>
+        <a href="{{ url_for('settings') }}" class="sidebar-link {% if request.endpoint == 'settings' %}active{% endif %}">
+          <span class="icon">⚙️</span> Settings
+        </a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+          <span class="icon">🛡️</span> Admin Panel
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </nav>
+
+    <!-- Main Content -->
+    <main class="page-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- Mobile Bottom Nav -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <a href="{{ url_for('index') }}" class="mobile-nav-btn {% if request.endpoint == 'index' %}active{% endif %}">
+      <span class="nav-icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="{{ url_for('trending') }}" class="mobile-nav-btn {% if request.endpoint == 'trending' %}active{% endif %}">
+      <span class="nav-icon">🔥</span>
+      <span>Trending</span>
+    </a>
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('upload') }}" class="mobile-nav-btn {% if request.endpoint == 'upload' %}active{% endif %}">
+      <span class="nav-icon">⬆</span>
+      <span>Upload</span>
+    </a>
+    <a href="{{ url_for('subscriptions') }}" class="mobile-nav-btn {% if request.endpoint == 'subscriptions' %}active{% endif %}">
+      <span class="nav-icon">🔔</span>
+      <span>Subs</span>
+    </a>
+    <a href="{{ url_for('channel', username=current_user.username) }}" class="mobile-nav-btn">
+      <span class="nav-icon">👤</span>
+      <span>You</span>
+    </a>
+    {% else %}
+    <a href="{{ url_for('search') }}" class="mobile-nav-btn {% if request.endpoint == 'search' %}active{% endif %}">
+      <span class="nav-icon">🔍</span>
+      <span>Search</span>
+    </a>
+    <a href="{{ url_for('login') }}" class="mobile-nav-btn">
+      <span class="nav-icon">👤</span>
+      <span>Sign In</span>
+    </a>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- Report Modal -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal">
+    <h2 class="modal-title">Report Content</h2>
+    <div class="modal-body">
+      <p style="margin-bottom:12px;color:var(--text-muted);font-size:0.875rem">
+        All reports are reviewed manually by the admin. Only report content that violates community guidelines.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <input type="text" id="reportReason" class="form-input" placeholder="Describe the issue…" maxlength="200">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeReport()">Cancel</button>
+      <button class="btn-primary" id="reportSubmitBtn">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{{ channel_user.username }}{% endblock %}
+
+{% block content %}
+<!-- Banner -->
+<div class="channel-banner">
+  {% if channel_user.banner %}
+    <img src="{{ url_for('static', filename='uploads/avatars/' + channel_user.banner) }}" alt="">
+  {% endif %}
+</div>
+
+<!-- Channel Header -->
+<div class="channel-header-info">
+  {% if channel_user.avatar %}
+    <img src="{{ channel_user.avatar_url() }}" alt="" class="channel-avatar-lg"
+         onerror="this.style.background='var(--surface-3)'">
+  {% else %}
+    <div class="channel-avatar-lg" style="display:flex;align-items:center;justify-content:center;background:var(--accent);color:white;font-size:2rem;font-weight:700">
+      {{ channel_user.username[0].upper() }}
+    </div>
+  {% endif %}
+  <div class="channel-meta">
+    <h1 class="channel-username">
+      {{ channel_user.username }}
+      {% if channel_user.is_admin %}<span class="badge badge-admin" style="font-size:0.65rem;vertical-align:middle">Admin</span>{% endif %}
+      {% if channel_user.is_suspended %}<span class="badge badge-suspended" style="font-size:0.65rem;vertical-align:middle">Suspended</span>{% endif %}
+    </h1>
+    <div class="channel-stats">
+      <span id="subCount">{{ channel_user.subscriber_count }} subscriber{{ 's' if channel_user.subscriber_count != 1 }}</span>
+      <span>•</span>
+      <span>{{ channel_user.video_count }} video{{ 's' if channel_user.video_count != 1 }}</span>
+      <span>•</span>
+      <span>Joined {{ channel_user.created_at.strftime('%b %Y') }}</span>
+    </div>
+    {% if channel_user.bio %}
+    <p class="channel-bio">{{ channel_user.bio }}</p>
+    {% endif %}
+  </div>
+
+  {% if current_user.is_authenticated and current_user.id != channel_user.id %}
+  <button class="btn-subscribe {% if is_subscribed %}subscribed{% endif %}"
+          id="subscribeBtn" data-channel-id="{{ channel_user.id }}"
+          style="align-self:center">
+    {{ 'Subscribed' if is_subscribed else 'Subscribe' }}
+  </button>
+  {% endif %}
+
+  {% if current_user.is_authenticated and current_user.id == channel_user.id %}
+  <a href="{{ url_for('settings') }}" class="btn-secondary" style="align-self:center">⚙️ Edit Channel</a>
+  {% endif %}
+</div>
+
+<!-- Tabs -->
+<div class="channel-tabs">
+  <a href="{{ url_for('channel', username=channel_user.username, tab='videos') }}"
+     class="channel-tab {% if tab == 'videos' %}active{% endif %}">Videos</a>
+  <a href="{{ url_for('channel', username=channel_user.username, tab='about') }}"
+     class="channel-tab {% if tab == 'about' %}active{% endif %}">About</a>
+</div>
+
+{% if tab == 'about' %}
+<!-- About Tab -->
+<div style="max-width:640px">
+  <div class="form-card">
+    <h2>About {{ channel_user.username }}</h2>
+    <div style="margin-top:12px">
+      <p style="font-size:0.875rem;color:var(--text-secondary);white-space:pre-wrap">
+        {{ channel_user.bio if channel_user.bio else 'This channel has no description yet.' }}
+      </p>
+    </div>
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;font-size:0.875rem;color:var(--text-muted)">
+      <div>📅 Joined: {{ channel_user.created_at.strftime('%B %d, %Y') }}</div>
+      <div>📹 Videos: {{ channel_user.video_count }}</div>
+      <div>👥 Subscribers: {{ channel_user.subscriber_count }}</div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- Videos Tab -->
+{% if videos and videos.items %}
+<div class="video-grid">
+  {% for video in videos.items %}
+  <a href="{{ url_for('watch', video_id=video.uuid) }}" class="video-card">
+    <div class="thumb-wrap">
+      <img src="{{ video.thumbnail_url() }}" alt="{{ video.title }}"
+           onerror="this.src='{{ url_for('static', filename='img/video_thumb.png') }}'">
+      <div class="thumb-overlay"><span class="thumb-play">▶</span></div>
+      {% if video.media_type == 'audio' %}<div class="audio-badge">♪ Audio</div>{% endif %}
+    </div>
+    <div class="card-info">
+      <div class="card-meta" style="padding-left:0">
+        <p class="card-title">{{ video.title }}</p>
+        <div class="card-stats">
+          <span>{{ video.format_views() }} views</span>
+          <span class="dot"></span>
+          <span>{{ video.time_ago() }}</span>
+        </div>
+      </div>
+      {% if current_user.is_authenticated and (current_user.id == channel_user.id or current_user.is_admin) %}
+      <form action="{{ url_for('delete_video', video_id=video.uuid) }}" method="POST"
+            class="confirm-action" data-confirm="Delete '{{ video.title }}'?"
+            onclick="event.stopPropagation()">
+        <button type="submit" class="btn-icon" style="color:var(--danger)" title="Delete">🗑️</button>
+      </form>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if videos.pages > 1 %}
+<div class="pagination">
+  {% if videos.has_prev %}
+  <a href="{{ url_for('channel', username=channel_user.username, page=videos.prev_num) }}" class="page-btn">← Prev</a>
+  {% endif %}
+  {% for p in videos.iter_pages() %}
+    {% if p %}
+    <a href="{{ url_for('channel', username=channel_user.username, page=p) }}" class="page-btn {% if p == videos.page %}active{% endif %}">{{ p }}</a>
+    {% else %}
+    <span class="page-btn">…</span>
+    {% endif %}
+  {% endfor %}
+  {% if videos.has_next %}
+  <a href="{{ url_for('channel', username=channel_user.username, page=videos.next_num) }}" class="page-btn">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📭</div>
+  <h3>No videos yet</h3>
+  {% if current_user.is_authenticated and current_user.id == channel_user.id %}
+    <p>You haven't uploaded anything yet.</p>
+    <a href="{{ url_for('upload') }}" class="btn-primary" style="margin-top:20px">Upload Now</a>
+  {% else %}
+    <p>{{ channel_user.username }} hasn't uploaded anything yet.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

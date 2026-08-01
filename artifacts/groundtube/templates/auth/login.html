@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — GroundTube</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">
+        <span>{{ message }}</span>
+        <button class="alert-close" onclick="this.parentElement.remove()">✕</button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-text">
+        <span class="logo-red">Ground</span>Tube
+      </div>
+    </div>
+
+    <h1 class="auth-title">Sign In</h1>
+    <p class="auth-sub">Welcome back — no tracking, no fingerprinting.</p>
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group">
+        <label class="form-label" for="login">Username or Email</label>
+        <input type="text" id="login" name="login" class="form-input"
+               placeholder="your_username or email@example.com"
+               autocomplete="username" required autofocus
+               value="{{ request.form.get('login', '') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <div style="position:relative">
+          <input type="password" id="password" name="password" class="form-input"
+                 placeholder="Your password" autocomplete="current-password" required>
+          <button type="button" id="togglePw"
+                  style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:0.875rem;background:none;border:none;cursor:pointer">
+            Show
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+        <input type="checkbox" id="remember" name="remember" style="accent-color:var(--accent)">
+        <label for="remember" style="font-size:0.875rem;color:var(--text-secondary);cursor:pointer">
+          Remember me
+        </label>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width:100%;justify-content:center;border-radius:var(--radius)">
+        Sign In
+      </button>
+    </form>
+
+    <p style="text-align:center;margin-top:20px;font-size:0.875rem;color:var(--text-muted)">
+      Don't have an account?
+      <a href="{{ url_for('register') }}" class="auth-link">Create one</a>
+    </p>
+    <p style="text-align:center;margin-top:8px">
+      <a href="{{ url_for('index') }}" class="auth-link" style="font-size:0.8rem">← Browse without signing in</a>
+    </p>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.alert').forEach(el => {
+  const close = el.querySelector('.alert-close');
+  if (close) close.addEventListener('click', () => el.remove());
+  setTimeout(() => el.remove(), 5000);
+});
+const togglePw = document.getElementById('togglePw');
+const pwInput = document.getElementById('password');
+if (togglePw && pwInput) {
+  togglePw.addEventListener('click', () => {
+    const isText = pwInput.type === 'text';
+    pwInput.type = isText ? 'password' : 'text';
+    togglePw.textContent = isText ? 'Show' : 'Hide';
+  });
+}
+</script>
+</body>
+</html>

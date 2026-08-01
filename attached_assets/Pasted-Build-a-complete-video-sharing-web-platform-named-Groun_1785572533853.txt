@@ -1,0 +1,25 @@
+Build a complete video-sharing web platform named "GroundTube" inspired by YouTube, optimized for mobile and desktop, with the following exact specifications:
+​Core Features (YouTube-like):
+​User Authentication: Register, Login, Logout, and User Profiles (Channels).
+​Video & Audio Upload: Support uploading MP4, WEBM, MP3, and WAV files with custom titles, descriptions, categories, and tags.
+​Video Player: Clean HTML5 video/audio player with custom controls, play/pause, volume, fullscreen, and video quality selection.
+​Feed & Discovery: Homepage with recommended videos, trending section, search bar, and category filters.
+​Interactions: Like/Dislike system, Comments section with replies, and Channel Subscriptions (Follow system).
+​Views & Analytics: View counter for each video and subscriber count for channels.
+​Privacy & Freedom Policies (STRICT):
+​NO Device Fingerprinting: Absolutely NO canvas fingerprinting, browser tracing, hardware ID logging, or tracking scripts.
+​NO Circumvention Bans or IP Bans: Identification is tied strictly to the individual user account (Session/Cookies only). If a user creates a new account, do not attempt to auto-ban or track hardware/IP cross-accounts. Keep accounts completely isolated.
+​Simple, privacy-friendly authentication (Email/Username + Password).
+​Admin Panel & Owner Control:
+​Create a special Master Admin Role (assigned only to my account: username admin).
+​The Master Admin must have full manual control over the platform:
+​A dedicated /admin dashboard accessible only to the Admin.
+​Ability to view all reported content, delete any video/comment, and suspend or delete user accounts with a single click.
+​NO automated AI bans or automatic content deletion. ALL moderation actions are strictly manual, decided solely by the Master Admin.
+​UI/UX Design:
+​Dark Mode design by default (YouTube Dark Theme aesthetic: #0f0f0f background, red accents #ff0000, clean dark cards).
+​Fully responsive, mobile-first UI with a bottom navigation bar or top header adapted for mobile screens.
+​Tech Stack:
+​Backend: Python (Flask or FastAPI) with SQLite/PostgreSQL database.
+​Frontend: HTML5, CSS3, JavaScript (vanilla or lightweight framework).
+​File Storage: Local storage / Flask static upload folder for media files.

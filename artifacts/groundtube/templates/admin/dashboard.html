@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🛡️ Admin Dashboard</h1>
+  <p>Manual moderation controls — all actions are performed by you.</p>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.users }}</div>
+    <div class="stat-label">Total Users</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.videos }}</div>
+    <div class="stat-label">Active Videos</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.comments }}</div>
+    <div class="stat-label">Comments</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:{% if stats.reports > 0 %}var(--warning){% else %}var(--accent){% endif %}">{{ stats.reports }}</div>
+    <div class="stat-label">Pending Reports</div>
+  </div>
+</div>
+
+<!-- Nav Tabs -->
+<div class="channel-tabs" style="margin-bottom:20px">
+  <a href="{{ url_for('admin_dashboard', tab='overview') }}" class="channel-tab {% if tab == 'overview' %}active{% endif %}">Overview</a>
+  <a href="{{ url_for('admin_dashboard', tab='users') }}" class="channel-tab {% if tab == 'users' %}active{% endif %}">
+    Users {% if tab == 'users' and users %}<span style="color:var(--text-muted);font-size:0.78rem">({{ users.total }})</span>{% endif %}
+  </a>
+  <a href="{{ url_for('admin_dashboard', tab='videos') }}" class="channel-tab {% if tab == 'videos' %}active{% endif %}">Videos</a>
+  <a href="{{ url_for('admin_dashboard', tab='reports') }}" class="channel-tab {% if tab == 'reports' %}active{% endif %}">
+    Reports {% if stats.reports > 0 %}<span style="background:var(--accent);color:white;padding:1px 7px;border-radius:10px;font-size:0.72rem">{{ stats.reports }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('admin_dashboard', tab='comments') }}" class="channel-tab {% if tab == 'comments' %}active{% endif %}">Comments</a>
+</div>
+
+<!-- Overview Tab -->
+{% if tab == 'overview' %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+  <div class="form-card">
+    <h2 style="margin-bottom:12px">Quick Links</h2>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <a href="{{ url_for('admin_dashboard', tab='users') }}" class="sidebar-link" style="border-radius:var(--radius)">👤 Manage Users</a>
+      <a href="{{ url_for('admin_dashboard', tab='videos') }}" class="sidebar-link" style="border-radius:var(--radius)">📹 Manage Videos</a>
+      <a href="{{ url_for('admin_dashboard', tab='reports') }}" class="sidebar-link" style="border-radius:var(--radius)">⚑ Review Reports</a>
+      <a href="{{ url_for('admin_dashboard', tab='comments') }}" class="sidebar-link" style="border-radius:var(--radius)">💬 Manage Comments</a>
+    </div>
+  </div>
+  <div class="form-card">
+    <h2 style="margin-bottom:12px">Admin Policy</h2>
+    <ul style="font-size:0.875rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;padding-left:16px;list-style:disc">
+      <li>All moderation is strictly manual — no AI or automated bans.</li>
+      <li>No IP tracking, device fingerprinting, or cross-account linking.</li>
+      <li>Accounts are identified solely by username and session.</li>
+      <li>Suspended users cannot log in. Deleted users are permanently removed.</li>
+      <li>Admin role is assigned only to the "admin" username.</li>
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<!-- Users Tab -->
+{% if tab == 'users' and users %}
+<div class="admin-search">
+  <form method="get" action="{{ url_for('admin_dashboard') }}" style="display:flex;gap:8px;width:100%">
+    <input type="hidden" name="tab" value="users">
+    <input type="text" name="q" class="form-input" placeholder="Search by username or email…"
+           value="{{ request.args.get('q', '') }}">
+    <button type="submit" class="btn-primary">Search</button>
+    {% if request.args.get('q') %}<a href="{{ url_for('admin_dashboard', tab='users') }}" class="btn-secondary">Clear</a>{% endif %}
+  </form>
+</div>
+<div style="overflow-x:auto">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Joined</th>
+        <th>Videos</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users.items %}
+      <tr>
+        <td>
+          <a href="{{ url_for('channel', username=u.username) }}" style="font-weight:600;color:var(--text-primary)">{{ u.username }}</a>
+        </td>
+        <td style="color:var(--text-muted);font-size:0.8rem">{{ u.email }}</td>
+        <td>
+          <span class="badge badge-{{ u.role }}">{{ u.role }}</span>
+        </td>
+        <td>
+          <span class="badge {% if u.is_suspended %}badge-suspended{% else %}badge-active{% endif %}">
+            {{ 'Suspended' if u.is_suspended else 'Active' }}
+          </span>
+        </td>
+        <td style="color:var(--text-muted);font-size:0.8rem">{{ u.created_at.strftime('%b %d, %Y') }}</td>
+        <td style="color:var(--text-muted)">{{ u.video_count }}</td>
+        <td>
+          {% if not u.is_admin %}
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <form action="{{ url_for('admin_suspend_user', user_id=u.id) }}" method="POST" class="confirm-action"
+                  data-confirm="{{ 'Unsuspend' if u.is_suspended else 'Suspend' }} {{ u.username }}?">
+              <button type="submit" class="btn-sm btn-warning">
+                {{ 'Unsuspend' if u.is_suspended else 'Suspend' }}
+              </button>
+            </form>
+            <form action="{{ url_for('admin_delete_user', user_id=u.id) }}" method="POST" class="confirm-action"
+                  data-confirm="PERMANENTLY DELETE {{ u.username }} and all their content? This cannot be undone.">
+              <button type="submit" class="btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+          {% else %}
+          <span style="font-size:0.78rem;color:var(--text-muted)">Protected</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if users.pages > 1 %}
+<div class="pagination">
+  {% if users.has_prev %}<a href="{{ url_for('admin_dashboard', tab='users', page=users.prev_num) }}" class="page-btn">← Prev</a>{% endif %}
+  {% for p in users.iter_pages() %}{% if p %}<a href="{{ url_for('admin_dashboard', tab='users', page=p) }}" class="page-btn {% if p == users.page %}active{% endif %}">{{ p }}</a>{% else %}<span class="page-btn">…</span>{% endif %}{% endfor %}
+  {% if users.has_next %}<a href="{{ url_for('admin_dashboard', tab='users', page=users.next_num) }}" class="page-btn">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Videos Tab -->
+{% if tab == 'videos' and videos %}
+<div class="admin-search">
+  <form method="get" action="{{ url_for('admin_dashboard') }}" style="display:flex;gap:8px;width:100%">
+    <input type="hidden" name="tab" value="videos">
+    <input type="text" name="q" class="form-input" placeholder="Search videos…"
+           value="{{ request.args.get('q', '') }}">
+    <button type="submit" class="btn-primary">Search</button>
+    {% if request.args.get('q') %}<a href="{{ url_for('admin_dashboard', tab='videos') }}" class="btn-secondary">Clear</a>{% endif %}
+  </form>
+</div>
+<div style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Video</th><th>Channel</th><th>Category</th><th>Views</th><th>Likes</th><th>Uploaded</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for v in videos.items %}
+      <tr>
+        <td>
+          <a href="{{ url_for('watch', video_id=v.uuid) }}" style="color:var(--text-primary);font-weight:600;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:280px">{{ v.title }}</a>
+        </td>
+        <td><a href="{{ url_for('channel', username=v.author.username) }}" style="color:#3ea6ff">{{ v.author.username }}</a></td>
+        <td style="color:var(--text-muted);font-size:0.8rem">{{ v.category }}</td>
+        <td style="color:var(--text-muted)">{{ v.format_views() }}</td>
+        <td style="color:var(--text-muted)">{{ v.like_count }}</td>
+        <td style="color:var(--text-muted);font-size:0.8rem">{{ v.created_at.strftime('%b %d, %Y') }}</td>
+        <td>
+          <form action="{{ url_for('admin_delete_video', video_id=v.id) }}" method="POST" class="confirm-action"
+                data-confirm="Delete '{{ v.title }}'?">
+            <button type="submit" class="btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if videos.pages > 1 %}
+<div class="pagination">
+  {% if videos.has_prev %}<a href="{{ url_for('admin_dashboard', tab='videos', page=videos.prev_num) }}" class="page-btn">← Prev</a>{% endif %}
+  {% for p in videos.iter_pages() %}{% if p %}<a href="{{ url_for('admin_dashboard', tab='videos', page=p) }}" class="page-btn {% if p == videos.page %}active{% endif %}">{{ p }}</a>{% else %}<span class="page-btn">…</span>{% endif %}{% endfor %}
+  {% if videos.has_next %}<a href="{{ url_for('admin_dashboard', tab='videos', page=videos.next_num) }}" class="page-btn">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Reports Tab -->
+{% if tab == 'reports' %}
+{% if reports and reports.items %}
+<div style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Type</th><th>Content</th><th>Reporter</th><th>Reason</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for r in reports.items %}
+      <tr>
+        <td><span class="badge badge-user">{{ r.content_type }}</span></td>
+        <td>
+          {% if r.content_type == 'video' and r.video %}
+            <a href="{{ url_for('watch', video_id=r.video.uuid) }}" style="color:#3ea6ff;font-size:0.8rem">{{ r.video.title[:50] }}{% if r.video.title|length > 50 %}…{% endif %}</a>
+          {% elif r.comment_id %}
+            <span style="font-size:0.8rem;color:var(--text-muted)">Comment #{{ r.comment_id }}</span>
+          {% endif %}
+        </td>
+        <td><a href="{{ url_for('channel', username=r.reporter.username) }}" style="color:#3ea6ff;font-size:0.8rem">{{ r.reporter.username }}</a></td>
+        <td style="color:var(--text-secondary);font-size:0.8rem;max-width:200px">{{ r.reason }}</td>
+        <td style="color:var(--text-muted);font-size:0.78rem">{{ r.created_at.strftime('%b %d, %Y') }}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <form action="{{ url_for('admin_resolve_report', report_id=r.id) }}" method="POST">
+              <button type="submit" class="btn-sm btn-success">Resolve</button>
+            </form>
+            {% if r.content_type == 'video' and r.video %}
+            <form action="{{ url_for('admin_delete_video', video_id=r.video.id) }}" method="POST" class="confirm-action"
+                  data-confirm="Delete this video?">
+              <button type="submit" class="btn-sm btn-danger">Delete</button>
+            </form>
+            {% elif r.comment_id %}
+            <form action="{{ url_for('admin_delete_comment', comment_id=r.comment_id) }}" method="POST" class="confirm-action"
+                  data-confirm="Delete this comment?">
+              <button type="submit" class="btn-sm btn-danger">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state"><div class="empty-icon">✅</div><h3>No pending reports</h3><p>All reports have been reviewed.</p></div>
+{% endif %}
+{% endif %}
+
+<!-- Comments Tab -->
+{% if tab == 'comments' and comments %}
+<div style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Author</th><th>Comment</th><th>Video</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for c in comments.items %}
+      <tr>
+        <td><a href="{{ url_for('channel', username=c.author.username) }}" style="color:#3ea6ff">{{ c.author.username }}</a></td>
+        <td style="color:var(--text-secondary);font-size:0.8rem;max-width:300px">{{ c.content[:100] }}{% if c.content|length > 100 %}…{% endif %}</td>
+        <td><a href="{{ url_for('watch', video_id=c.video.uuid) }}" style="color:#3ea6ff;font-size:0.78rem">{{ c.video.title[:40] }}{% if c.video.title|length > 40 %}…{% endif %}</a></td>
+        <td style="color:var(--text-muted);font-size:0.78rem">{{ c.created_at.strftime('%b %d, %Y') }}</td>
+        <td>
+          <form action="{{ url_for('admin_delete_comment', comment_id=c.id) }}" method="POST" class="confirm-action"
+                data-confirm="Delete this comment?">
+            <button type="submit" class="btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if comments.pages > 1 %}
+<div class="pagination">
+  {% if comments.has_prev %}<a href="{{ url_for('admin_dashboard', tab='comments', page=comments.prev_num) }}" class="page-btn">← Prev</a>{% endif %}
+  {% for p in comments.iter_pages() %}{% if p %}<a href="{{ url_for('admin_dashboard', tab='comments', page=p) }}" class="page-btn {% if p == comments.page %}active{% endif %}">{{ p }}</a>{% else %}<span class="page-btn">…</span>{% endif %}{% endfor %}
+  {% if comments.has_next %}<a href="{{ url_for('admin_dashboard', tab='comments', page=comments.next_num) }}" class="page-btn">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

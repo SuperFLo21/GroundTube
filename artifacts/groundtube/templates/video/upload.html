@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Upload{% endblock %}
+
+{% block content %}
+<div class="upload-wrap">
+  <div class="page-header">
+    <h1>Upload Content</h1>
+    <p>Share your video or audio with the GroundTube community.</p>
+  </div>
+
+  <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data" id="uploadForm">
+    <!-- Drop Zone -->
+    <div class="upload-dropzone" id="uploadDropzone">
+      <div class="drop-icon">📁</div>
+      <p class="drop-text">Drag & drop your file here</p>
+      <p class="drop-sub">Supports MP4, WEBM, MP3, WAV · Max 2GB</p>
+      <input type="file" id="mediaFile" name="media_file"
+             accept=".mp4,.webm,.mp3,.wav,video/mp4,video/webm,audio/mpeg,audio/wav"
+             style="display:none" required>
+    </div>
+
+    <!-- Selected file info -->
+    <div id="selectedFileInfo" class="selected-file-info hidden">
+      <span style="font-size:1.5rem">📄</span>
+      <div style="flex:1;min-width:0">
+        <p class="file-name" style="font-weight:600;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
+        <p class="file-size" style="font-size:0.78rem;color:var(--text-muted)"></p>
+      </div>
+      <button type="button" onclick="document.getElementById('mediaFile').click()"
+              class="btn-secondary" style="padding:4px 12px;font-size:0.8rem">Change</button>
+    </div>
+
+    <!-- Upload Progress -->
+    <div class="upload-progress" id="uploadProgress">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill"></div>
+      </div>
+      <p class="progress-label">Uploading…</p>
+    </div>
+
+    <!-- Details -->
+    <div class="form-card">
+      <h2>Video Details</h2>
+
+      <div class="form-group">
+        <label class="form-label" for="title">Title *</label>
+        <input type="text" id="title" name="title" class="form-input"
+               placeholder="Give your content a great title"
+               maxlength="200" required
+               value="{{ request.form.get('title', '') }}"
+               oninput="document.getElementById('titleCount').textContent=this.value.length">
+        <p class="char-count"><span id="titleCount">0</span>/200</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="description">Description</label>
+        <textarea id="description" name="description" class="form-textarea"
+                  placeholder="Tell viewers about your content… (optional)"
+                  rows="4" maxlength="5000"
+                  oninput="document.getElementById('descCount').textContent=this.value.length">{{ request.form.get('description', '') }}</textarea>
+        <p class="char-count"><span id="descCount">0</span>/5000</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="category">Category</label>
+        <select id="category" name="category" class="form-select">
+          {% for cat in categories %}
+          <option value="{{ cat }}" {% if request.form.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="tags">Tags</label>
+        <input type="text" id="tags" name="tags" class="form-input"
+               placeholder="gaming, tutorial, funny (comma-separated)"
+               maxlength="500"
+               value="{{ request.form.get('tags', '') }}">
+        <p class="form-hint">Separate tags with commas to help people find your content.</p>
+      </div>
+    </div>
+
+    <!-- Thumbnail -->
+    <div class="form-card">
+      <h2>Thumbnail</h2>
+      <div class="thumb-preview" id="thumbPreviewWrap">
+        <img id="thumbPreviewImg" src="" alt="" style="display:none">
+        <p id="thumbPlaceholder" style="font-size:0.875rem">No thumbnail selected — a default will be used</p>
+      </div>
+      <label class="form-label" for="thumbnailInput">Upload Custom Thumbnail</label>
+      <input type="file" id="thumbnailInput" name="thumbnail"
+             accept=".jpg,.jpeg,.png,.gif,.webp,image/*"
+             class="form-input" style="padding:8px">
+      <p class="form-hint">Recommended: 1280×720 (16:9). JPG, PNG, GIF, or WebP.</p>
+    </div>
+
+    <!-- Submit -->
+    <div style="display:flex;gap:12px;align-items:center">
+      <button type="submit" class="btn-primary" id="uploadSubmitBtn">
+        ⬆ Publish
+      </button>
+      <a href="{{ url_for('index') }}" class="btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% block scripts %}
+<script>
+// Char counts on load
+document.getElementById('titleCount').textContent = document.getElementById('title').value.length;
+document.getElementById('descCount').textContent = document.getElementById('description').value.length;
+
+// Thumb preview placeholder hide
+const thumbPreview = document.getElementById('thumbPreviewImg');
+if (thumbPreview) {
+  thumbPreview.addEventListener('load', () => {
+    document.getElementById('thumbPlaceholder').style.display = 'none';
+    thumbPreview.style.display = 'block';
+  });
+}
+</script>
+{% endblock %}
+{% endblock %}

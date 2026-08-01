@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}{{ video.title }}{% endblock %}
+
+{% block content %}
+<input type="hidden" id="videoUUID" value="{{ video.uuid }}">
+
+<div class="watch-layout">
+  <!-- Left: Player + Info + Comments -->
+  <div>
+    <!-- Player -->
+    {% if video.media_type == 'audio' %}
+    <div class="audio-player-wrap">
+      <img src="{{ video.thumbnail_url() }}" alt="" class="audio-cover"
+           onerror="this.src='{{ url_for('static', filename='img/audio_thumb.png') }}'">
+      <div class="audio-controls" style="width:100%;max-width:500px">
+        <p style="font-size:1rem;font-weight:700;margin-bottom:12px;text-align:center">{{ video.title }}</p>
+        <audio controls style="width:100%;accent-color:var(--accent)">
+          <source src="{{ video.file_url() }}" type="audio/{{ video.filename.rsplit('.',1)[1] }}">
+          Your browser does not support audio playback.
+        </audio>
+      </div>
+    </div>
+    {% else %}
+    <div class="player-wrap">
+      <video controls preload="metadata" style="width:100%;height:100%;background:#000" id="videoPlayer">
+        <source src="{{ video.file_url() }}" type="video/{{ video.filename.rsplit('.',1)[1] }}">
+        Your browser does not support video playback.
+      </video>
+    </div>
+    {% endif %}
+
+    <!-- Video Info -->
+    <div class="video-info">
+      <div class="video-title-row">
+        <h1 class="video-page-title">{{ video.title }}</h1>
+      </div>
+
+      <!-- Channel Row -->
+      <div class="video-channel-row">
+        <a href="{{ url_for('channel', username=video.author.username) }}" class="channel-link">
+          {% if video.author.avatar %}
+            <img src="{{ video.author.avatar_url() }}" alt="" class="card-avatar"
+                 onerror="this.style.background='var(--surface-3)'">
+          {% else %}
+            <div class="avatar-pl" style="display:flex;align-items:center;justify-content:center;background:var(--accent);color:white;font-weight:700">
+              {{ video.author.username[0].upper() }}
+            </div>
+          {% endif %}
+          <div>
+            <p class="channel-name">{{ video.author.username }}</p>
+            <p class="sub-count" id="subCount">{{ video.author.subscriber_count }} subscriber{{ 's' if video.author.subscriber_count != 1 }}</p>
+          </div>
+        </a>
+
+        {% if current_user.is_authenticated and current_user.id != video.user_id %}
+        <button class="btn-subscribe {% if is_subscribed %}subscribed{% endif %}"
+                id="subscribeBtn" data-channel-id="{{ video.user_id }}">
+          {{ 'Subscribed' if is_subscribed else 'Subscribe' }}
+        </button>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="video-actions">
+        <button class="action-btn {% if user_like == 'like' %}active{% endif %}" id="likeBtn">
+          <span class="icon">👍</span>
+          <span id="likeCount">{{ video.like_count }}</span>
+        </button>
+        <button class="action-btn {% if user_like == 'dislike' %}active{% endif %}" id="dislikeBtn">
+          <span class="icon">👎</span>
+          <span id="dislikeCount">{{ video.dislike_count }}</span>
+        </button>
+        <button class="action-btn" onclick="openReport('video', '{{ video.uuid }}')">
+          <span class="icon">⚑</span> Report
+        </button>
+        {% if current_user.is_authenticated and (current_user.id == video.user_id or current_user.is_admin) %}
+        <form action="{{ url_for('delete_video', video_id=video.uuid) }}" method="POST"
+              class="confirm-action" data-confirm="Delete this video? This cannot be undone."
+              style="margin-left:auto">
+          <button type="submit" class="action-btn" style="color:var(--danger)">
+            <span class="icon">🗑️</span> Delete
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      <!-- Like bar -->
+      {% set total_votes = video.like_count + video.dislike_count %}
+      {% set like_pct = ((video.like_count / total_votes * 100) | int) if total_votes > 0 else 50 %}
+      <div class="like-bar">
+        <div class="like-bar-fill" id="likeBarFill" style="width:{{ like_pct }}%"></div>
+      </div>
+
+      <!-- Description -->
+      <div class="video-description" id="videoDesc">
+        <div class="desc-meta">
+          <span>{{ video.format_views() }} views</span>
+          <span>{{ video.created_at.strftime('%b %d, %Y') }}</span>
+          <span>{{ video.category }}</span>
+        </div>
+        <p style="white-space:pre-wrap">{{ video.description or 'No description provided.' }}</p>
+        {% if video.tag_list() %}
+        <div class="video-tags">
+          {% for tag in video.tag_list() %}
+          <a href="{{ url_for('search', q=tag) }}" class="tag-chip">#{{ tag }}</a>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <p style="margin-top:8px;font-size:0.75rem;color:var(--text-muted)">Click to expand/collapse</p>
+      </div>
+    </div>
+
+    <!-- Comments -->
+    <div class="comments-section">
+      <div class="comments-header">
+        <h3><span id="commentCount">{{ video.comment_count }}</span> Comments</h3>
+      </div>
+
+      {% if current_user.is_authenticated %}
+      <form class="comment-form" id="commentForm">
+        {% if current_user.avatar %}
+          <img src="{{ current_user.avatar_url() }}" alt="" class="comment-avatar">
+        {% else %}
+          <div class="comment-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);color:white;font-weight:700;font-size:0.8rem">
+            {{ current_user.username[0].upper() }}
+          </div>
+        {% endif %}
+        <div class="comment-input-wrap">
+          <textarea class="comment-input" id="commentInput" rows="1"
+                    placeholder="Add a comment…" maxlength="2000"></textarea>
+          <div class="comment-form-actions hidden" id="commentFormActions">
+            <button type="button" class="btn-cancel" id="commentCancelBtn">Cancel</button>
+            <button type="submit" class="btn-comment" id="commentSubmit" disabled>Comment</button>
+          </div>
+        </div>
+      </form>
+      {% else %}
+      <p style="font-size:0.875rem;color:var(--text-muted);margin-bottom:20px">
+        <a href="{{ url_for('login') }}" style="color:#3ea6ff">Sign in</a> to leave a comment.
+      </p>
+      {% endif %}
+
+      <div class="comments-list" id="commentsList">
+        {% for comment in comments %}
+        <div class="comment" data-comment-id="{{ comment.id }}">
+          <a href="{{ url_for('channel', username=comment.author.username) }}">
+            {% if comment.author.avatar %}
+              <img src="{{ comment.author.avatar_url() }}" alt="" class="comment-avatar"
+                   onerror="this.style.background='var(--surface-3)'">
+            {% else %}
+              <div class="comment-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);color:white;font-weight:700;font-size:0.8rem">
+                {{ comment.author.username[0].upper() }}
+              </div>
+            {% endif %}
+          </a>
+          <div class="comment-body">
+            <div class="comment-header">
+              <a href="{{ url_for('channel', username=comment.author.username) }}" class="comment-username">
+                {{ comment.author.username }}
+              </a>
+              <span class="comment-time">{{ comment.time_ago() }}</span>
+            </div>
+            <p class="comment-text">{{ comment.content }}</p>
+            <div class="comment-actions">
+              {% if current_user.is_authenticated %}
+              <button class="btn-reply-toggle" onclick="toggleReplyForm(this, {{ comment.id }})">Reply</button>
+              {% endif %}
+              {% if current_user.is_authenticated and (current_user.id == comment.user_id or current_user.is_admin) %}
+              <button class="btn-delete-comment"
+                      onclick="deleteComment({{ comment.id }}, this)">Delete</button>
+              {% endif %}
+              <button class="btn-reply-toggle" style="color:var(--text-muted)"
+                      onclick="openReport('comment', '{{ comment.id }}')">Report</button>
+            </div>
+            <!-- Replies -->
+            <div class="replies" id="replies-{{ comment.id }}">
+              {% for reply in comment.replies.filter_by(is_deleted=False).all() %}
+              <div class="comment" data-comment-id="{{ reply.id }}">
+                <a href="{{ url_for('channel', username=reply.author.username) }}">
+                  {% if reply.author.avatar %}
+                    <img src="{{ reply.author.avatar_url() }}" alt="" class="comment-avatar"
+                         style="width:24px;height:24px">
+                  {% else %}
+                    <div class="comment-avatar" style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--text-muted);font-weight:700;font-size:0.7rem">
+                      {{ reply.author.username[0].upper() }}
+                    </div>
+                  {% endif %}
+                </a>
+                <div class="comment-body">
+                  <div class="comment-header">
+                    <a href="{{ url_for('channel', username=reply.author.username) }}" class="comment-username">
+                      {{ reply.author.username }}
+                    </a>
+                    <span class="comment-time">{{ reply.time_ago() }}</span>
+                  </div>
+                  <p class="comment-text">{{ reply.content }}</p>
+                  {% if current_user.is_authenticated and (current_user.id == reply.user_id or current_user.is_admin) %}
+                  <div class="comment-actions">
+                    <button class="btn-delete-comment" onclick="deleteComment({{ reply.id }}, this)">Delete</button>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted" style="font-size:0.875rem">No comments yet. Be the first to comment!</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Related Videos -->
+  <aside>
+    <h3 style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:var(--text-muted)">UP NEXT</h3>
+    <div class="related-videos">
+      {% for rv in related %}
+      <a href="{{ url_for('watch', video_id=rv.uuid) }}" class="related-card">
+        <div style="position:relative;flex-shrink:0;width:168px;height:94px">
+          <img src="{{ rv.thumbnail_url() }}" alt="{{ rv.title }}" class="related-thumb"
+               onerror="this.src='{{ url_for('static', filename='img/video_thumb.png') }}'">
+          {% if rv.media_type == 'audio' %}
+          <div class="audio-badge" style="position:absolute;top:4px;left:4px">♪</div>
+          {% endif %}
+        </div>
+        <div class="related-info">
+          <p class="related-title">{{ rv.title }}</p>
+          <p class="related-channel">{{ rv.author.username }}</p>
+          <p class="related-views">{{ rv.format_views() }} views • {{ rv.time_ago() }}</p>
+        </div>
+      </a>
+      {% else %}
+      <p class="text-muted" style="font-size:0.8rem">No related videos found.</p>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

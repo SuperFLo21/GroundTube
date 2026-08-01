@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>⚙️ Settings</h1>
+  <p>Manage your account and channel.</p>
+</div>
+
+<div class="settings-layout">
+  <!-- Nav -->
+  <div class="settings-nav">
+    <a href="#profile" class="sidebar-link active">👤 Profile</a>
+    <a href="#password" class="sidebar-link">🔒 Password</a>
+    <a href="#account" class="sidebar-link">🗑️ Account</a>
+  </div>
+
+  <!-- Content -->
+  <div>
+    <!-- Profile Section -->
+    <div class="form-card" id="profile">
+      <h2>Profile Settings</h2>
+      <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="profile">
+
+        <div class="form-group" style="display:flex;align-items:center;gap:20px">
+          <div>
+            {% if current_user.avatar %}
+              <img src="{{ current_user.avatar_url() }}" alt=""
+                   id="avatarPreview"
+                   style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--border)">
+            {% else %}
+              <div id="avatarPreview"
+                   style="width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:2rem;font-weight:700;border:3px solid var(--border)">
+                {{ current_user.username[0].upper() }}
+              </div>
+            {% endif %}
+          </div>
+          <div>
+            <label class="form-label" for="avatar">Profile Picture</label>
+            <input type="file" id="avatar" name="avatar" class="form-input"
+                   accept=".jpg,.jpeg,.png,.gif,.webp,image/*"
+                   style="padding:8px">
+            <p class="form-hint">JPG, PNG, or WebP. Recommended 400×400.</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-input" value="{{ current_user.username }}" disabled
+                 style="opacity:0.5;cursor:not-allowed">
+          <p class="form-hint">Username cannot be changed.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="text" class="form-input" value="{{ current_user.email }}" disabled
+                 style="opacity:0.5;cursor:not-allowed">
+          <p class="form-hint">Email cannot be changed (privacy by design).</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="bio">Channel Bio</label>
+          <textarea id="bio" name="bio" class="form-textarea"
+                    placeholder="Tell people about your channel…"
+                    rows="4" maxlength="500">{{ current_user.bio }}</textarea>
+          <p class="form-hint">Max 500 characters.</p>
+        </div>
+
+        <button type="submit" class="btn-primary">Save Profile</button>
+      </form>
+    </div>
+
+    <!-- Password Section -->
+    <div class="form-card" id="password" style="margin-top:20px">
+      <h2>Change Password</h2>
+      <form method="POST" action="{{ url_for('settings') }}">
+        <input type="hidden" name="action" value="password">
+
+        <div class="form-group">
+          <label class="form-label" for="current_password">Current Password</label>
+          <input type="password" id="current_password" name="current_password"
+                 class="form-input" required autocomplete="current-password">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="new_password">New Password</label>
+          <input type="password" id="new_password" name="new_password"
+                 class="form-input" required minlength="6" autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirm_password">Confirm New Password</label>
+          <input type="password" id="confirm_password" name="confirm_password"
+                 class="form-input" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn-primary">Change Password</button>
+      </form>
+    </div>
+
+    <!-- Account Section -->
+    <div class="form-card" id="account" style="margin-top:20px">
+      <h2>Account Info</h2>
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:0.875rem;color:var(--text-secondary)">
+        <div><strong>Username:</strong> {{ current_user.username }}</div>
+        <div><strong>Role:</strong> <span class="badge badge-{{ current_user.role }}">{{ current_user.role }}</span></div>
+        <div><strong>Member since:</strong> {{ current_user.created_at.strftime('%B %d, %Y') }}</div>
+        <div><strong>Subscribers:</strong> {{ current_user.subscriber_count }}</div>
+        <div><strong>Videos uploaded:</strong> {{ current_user.video_count }}</div>
+      </div>
+      <div style="margin-top:20px;padding:16px;background:var(--surface-2);border-radius:var(--radius);font-size:0.8rem;color:var(--text-muted)">
+        🔒 <strong>Privacy notice:</strong> GroundTube does not track your IP address, device, or browsing behaviour. Your account is identified solely by your session cookie. Creating a new account does not link to your old accounts in any way.
+      </div>
+      <div style="margin-top:16px">
+        <a href="{{ url_for('logout') }}" class="btn-secondary">🚪 Sign Out</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+const avatarInput = document.getElementById('avatar');
+const avatarPreview = document.getElementById('avatarPreview');
+if (avatarInput && avatarPreview) {
+  avatarInput.addEventListener('change', () => {
+    const file = avatarInput.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        // Replace with img tag if div
+        if (avatarPreview.tagName === 'DIV') {
+          const img = document.createElement('img');
+          img.id = 'avatarPreview';
+          img.style.cssText = 'width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--border)';
+          img.src = e.target.result;
+          avatarPreview.replaceWith(img);
+        } else {
+          avatarPreview.src = e.target.result;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+</script>
+{% endblock %}
+{% endblock %}
